@@ -3,146 +3,222 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>بازی خنثی کردن بمب با مدال</title>
+  <title>بازی خنثی کردن بمب با مدال و رکورد آنلاین</title>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
   <style>
-    body { font-family: 'Vazirmatn', sans-serif; background-color: #f4f4f4; text-align: center; padding: 40px; }
-    h1 { color: #3b5bdb; margin-bottom: 10px; }
-    #score, #highscore, #round, #timer, #medal { font-size: 1.2rem; margin-bottom: 10px; color: #2f2f2f; }
+    body { font-family: 'Vazirmatn', sans-serif; background: #f0f2f5; padding: 20px; text-align: center; }
+    h1 { color: #3b5bdb; }
+    #score, #highscore, #round, #timer, #medal { font-size: 1.2rem; margin: 5px 0; }
     #timer { color: #e03131; font-weight: bold; }
-    #game { display: grid; grid-template-columns: repeat(5, 60px); gap: 10px; justify-content: center; margin: 20px auto; }
-    .cell { width: 60px; height: 60px; background-color: #ffffff; border: 2px solid #ccc; border-radius: 8px; cursor: pointer; font-size: 1.5rem; transition: 0.2s; user-select: none; }
-    .cell:hover { background-color: #e0e7ff; }
-    .cell.revealed { cursor: default; background-color: #f1f3f5; }
-    .cell.bomb { background-color: #ff6b6b; color: white; }
-    #message { font-size: 1.2rem; margin-top: 20px; color: #222; min-height: 28px; }
-    button { margin-top: 20px; padding: 10px 25px; font-size: 1rem; border: none; background-color: #3b5bdb; color: white; border-radius: 8px; cursor: pointer; }
-    button:hover { background-color: #4c6ef5; }
-    #leaderboard { margin-top: 40px; text-align: right; max-width: 400px; margin-inline: auto; }
-    #leaderboard h2 { margin-bottom: 10px; color: #3b5bdb; }
+    #game { display: grid; grid-template-columns: repeat(5, 60px); gap: 8px; justify-content: center; margin: 20px auto; }
+    .cell { width: 60px; height: 60px; background: white; border-radius: 8px; border: 2px solid #ccc; cursor: pointer; font-size: 24px; user-select: none; transition: background 0.3s; }
+    .cell:hover { background: #e0e7ff; }
+    .cell.revealed { cursor: default; background: #f1f3f5; }
+    .cell.bomb { background: #ff6b6b; color: white; }
+    #message { margin: 10px 0 20px; min-height: 24px; font-size: 1.1rem; color: #333; }
+    input[type="text"] { padding: 6px; font-size: 1rem; border-radius: 6px; border: 1px solid #ccc; width: 200px; }
+    button { padding: 8px 20px; margin: 10px 5px; font-size: 1rem; border-radius: 6px; border: none; background: #3b5bdb; color: white; cursor: pointer; transition: background 0.3s; }
+    button:hover { background: #4c6ef5; }
+    #leaderboard { max-width: 400px; margin: 30px auto 0; text-align: right; }
+    #leaderboard h2 { color: #3b5bdb; margin-bottom: 10px; }
     #leaderboard ul { list-style: none; padding: 0; }
-    #leaderboard li { background: #fff; padding: 8px; margin-bottom: 5px; border: 1px solid #ddd; border-radius: 6px; }
-    #nameInputWrapper { margin-top: 20px; }
-    input[type="text"] { padding: 6px; font-size: 1rem; border: 1px solid #ccc; border-radius: 5px; width: 200px; }
-    #shareButton { display: none; margin-top: 10px; background-color: #2fb344; }
+    #leaderboard li { background: white; padding: 8px; margin-bottom: 5px; border-radius: 6px; border: 1px solid #ddd; }
   </style>
 </head>
 <body>
+
   <h1>💣 بازی خنثی کردن بمب</h1>
-  <div id="score">امتیاز: 100</div>
+  <div id="score">امتیاز: 0</div>
   <div id="highscore">بالاترین رکورد: 0</div>
   <div id="round">راند: 1</div>
   <div id="medal">🏅 مدال: هنوز چیزی نگرفتی</div>
   <div id="timer">⏳ زمان: 10</div>
+
   <div id="game"></div>
   <div id="message">در حال آماده‌سازی بازی...</div>
-  <div id="nameInputWrapper" style="display:none;">
+
+  <div id="nameInputWrapper" style="display:none; margin-top:15px;">
     <input type="text" id="playerName" placeholder="نام خود را وارد کنید" />
-    <button onclick="saveHighScore()">ثبت رکورد</button>
-    <button id="shareButton" onclick="shareScore()">اشتراک‌گذاری در واتساپ</button>
+    <button id="saveScoreBtn">ثبت رکورد</button>
   </div>
-  <button onclick="resetGame()">شروع دوباره</button>
+
+  <button id="restartBtn" style="display:none;">شروع دوباره</button>
+
   <div id="leaderboard">
     <h2>🏆 رکوردهای جهانی</h2>
     <ul id="leaderboardList"></ul>
   </div>
 
   <script>
+    // تنظیمات Firebase خودت رو اینجا بزار:
     const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+      apiKey: "AIzaSyAn4p0hh38oNPJymxhjuOpx1glSt827Zu0",
+      authDomain: "bomb-game-project.firebaseapp.com",
+      projectId: "bomb-game-project",
+      storageBucket: "bomb-game-project.firebasestorage.app",
+      messagingSenderId: "578216855542",
+      appId: "1:578216855542:web:429ab7cc304f945a50a9d7",
+      measurementId: "G-S69L08DM1Y"
     };
+
     firebase.initializeApp(firebaseConfig);
     const db = firebase.firestore();
 
-    const playerNameInput = document.getElementById("playerName");
-    const nameInputWrapper = document.getElementById("nameInputWrapper");
-    const leaderboardList = document.getElementById("leaderboardList");
-    const highScoreEl = document.getElementById("highscore");
-    const scoreEl = document.getElementById("score");
-    const medalEl = document.getElementById("medal");
+    // المان‌ها
+    const gameEl = document.getElementById('game');
+    const scoreEl = document.getElementById('score');
+    const highscoreEl = document.getElementById('highscore');
+    const roundEl = document.getElementById('round');
+    const medalEl = document.getElementById('medal');
+    const timerEl = document.getElementById('timer');
+    const messageEl = document.getElementById('message');
+    const nameInputWrapper = document.getElementById('nameInputWrapper');
+    const playerNameInput = document.getElementById('playerName');
+    const saveScoreBtn = document.getElementById('saveScoreBtn');
+    const restartBtn = document.getElementById('restartBtn');
+    const leaderboardList = document.getElementById('leaderboardList');
 
+    // متغیرهای بازی
+    let score = 0;
     let highScore = 0;
+    let round = 1;
+    let medal = "";
+    let timeLeft = 10;
+    let timerInterval = null;
+    let bombCount = 1;
+    let bombs = [];
+    let gameActive = false;
+    let cellsCount = 25;
+    let revealTime = 2000; // زمان نمایش بمب ها به میلی ثانیه
+    let roundsSinceBombIncrement = 0;
 
-    function getCurrentMedal() {
-      const medalText = medalEl.textContent.replace("🏅 مدال: ", "");
-      return medalText || "هیچ‌چیز";
+    // مدال‌ها
+    const medals = [
+      { rounds: 5, name: "مدال برنزی", icon: "🥉" },
+      { rounds: 10, name: "مدال نقره‌ای", icon: "🥈" },
+      { rounds: 15, name: "مدال طلایی", icon: "🥇" },
+      { rounds: 20, name: "سنگ کهربا", icon: "💎" },
+      { rounds: 25, name: "سنگ الماس", icon: "🔷" }
+    ];
+
+    function updateMedal() {
+      medal = "";
+      for(let i = medals.length - 1; i >= 0; i--) {
+        if(round > medals[i].rounds) {
+          medal = medals[i].icon + " " + medals[i].name;
+          break;
+        }
+      }
+      if(!medal) medal = "🏅 هنوز چیزی نگرفتی";
+      medalEl.textContent = `مدال: ${medal}`;
     }
 
-    async function saveHighScore() {
-      const name = playerNameInput.value.trim();
-      if (!name) {
-        alert("لطفاً نام خود را وارد کنید.");
-        return;
-      }
-
-      const score = parseInt(scoreEl.textContent.replace("امتیاز: ", ""), 10);
-      const medal = getCurrentMedal();
-
-      try {
-        await db.collection("leaderboard").add({ name, score, medal, timestamp: firebase.firestore.FieldValue.serverTimestamp() });
-        alert("رکورد ذخیره شد!");
-        loadLeaderboard();
-      } catch (e) {
-        alert("خطا در ذخیره رکورد: " + e.message);
-      }
-
-      playerNameInput.value = "";
-      nameInputWrapper.style.display = "none";
-    }
-
-    async function loadLeaderboard() {
-      leaderboardList.innerHTML = "در حال بارگذاری...";
-      try {
-        const snapshot = await db.collection("leaderboard").orderBy("score", "desc").limit(10).get();
-        leaderboardList.innerHTML = "";
-        snapshot.forEach((doc, index) => {
-          const data = doc.data();
-          const li = document.createElement("li");
-          li.textContent = `${index + 1}. ${data.name} - ${data.score} ${data.medal}`;
-          leaderboardList.appendChild(li);
-        });
-      } catch (e) {
-        leaderboardList.innerHTML = "خطا در دریافت رکوردها";
+    function createGrid() {
+      gameEl.innerHTML = '';
+      for(let i=0; i<cellsCount; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell');
+        cell.dataset.index = i;
+        gameEl.appendChild(cell);
       }
     }
 
-    function shareScore() {
-      const name = playerNameInput.value.trim() || "ناشناس";
-      const text = `🔥 ${name} در بازی خنثی‌سازی بمب رکورد زد!\n🏆 امتیاز: ${scoreEl.textContent.replace("امتیاز: ", "")}\n🥇 مدال: ${getCurrentMedal()}\n🎮 امتحان کن: [آدرس سایت شما]`;
-      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-      window.open(url, "_blank");
+    function placeBombs() {
+      bombs = [];
+      while(bombs.length < bombCount) {
+        let pos = Math.floor(Math.random() * cellsCount);
+        if(!bombs.includes(pos)) bombs.push(pos);
+      }
     }
 
-    loadLeaderboard();
-    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    function showBombs() {
+      bombs.forEach(pos => {
+        const cell = gameEl.querySelector(`.cell[data-index="${pos}"]`);
+        if(cell) {
+          cell.classList.add('bomb');
+          cell.textContent = "💣";
+        }
+      });
+    }
 
-<script>
-  const firebaseConfig = {
-    apiKey: "AIzaSyAn4p0hh38oNPJymxhjuOpx1glSt827Zu0",
-    authDomain: "bomb-game-project.firebaseapp.com",
-    projectId: "bomb-game-project",
-    storageBucket: "bomb-game-project.firebasestorage.app",
-    messagingSenderId: "578216855542",
-    appId: "1:578216855542:web:429ab7cc304f945a50a9d7",
-    measurementId: "G-S69L08DM1Y"
-  };
+    function hideBombs() {
+      bombs.forEach(pos => {
+        const cell = gameEl.querySelector(`.cell[data-index="${pos}"]`);
+        if(cell) {
+          cell.classList.remove('bomb');
+          cell.textContent = "";
+        }
+      });
+    }
 
-  // Initialize Firebase
-  firebase.initializeApp(firebaseConfig);
+    function startTimer() {
+      timeLeft = 10 * Math.pow(0.9, round -1); // هر راند 10% کم میشه
+      timeLeft = parseFloat(timeLeft.toFixed(1)); // عدد با یک رقم اعشار
+      updateTimerDisplay();
 
-  // حالا می‌تونی از firestore استفاده کنی:
-  const db = firebase.firestore();
-</script>
+      if(timerInterval) clearInterval(timerInterval);
+      timerInterval = setInterval(() => {
+        timeLeft -= 0.1;
+        if(timeLeft <= 0) {
+          timeLeft = 0;
+          updateTimerDisplay();
+          clearInterval(timerInterval);
+          gameOver("زمان تمام شد!");
+        } else {
+          updateTimerDisplay();
+        }
+      }, 100);
+    }
 
-  </script>
+    function updateTimerDisplay() {
+      timerEl.textContent = `⏳ زمان: ${timeLeft.toFixed(1)}`;
+    }
 
-  <script src="logic.js"></script>
-</body>
-</html>
+    function startRound() {
+      gameActive = false;
+      roundEl.textContent = `راند: ${round}`;
+      scoreEl.textContent = `امتیاز: ${score}`;
+      updateMedal();
+      createGrid();
+      placeBombs();
+      showBombs();
+      messageEl.textContent = 'بمب‌ها نمایش داده شدند، خوب نگاه کن...';
+
+      // نمایش بمب ها برای revealTime بعد مخفی کن و شروع بازی
+      setTimeout(() => {
+        hideBombs();
+        messageEl.textContent = 'حالا بمب را پیدا کن!';
+        gameActive = true;
+        startTimer();
+      }, revealTime);
+
+      // هر 3 راند یک بمب اضافه کن
+      roundsSinceBombIncrement++;
+      if(roundsSinceBombIncrement >= 3) {
+        bombCount++;
+        roundsSinceBombIncrement = 0;
+      }
+
+      restartBtn.style.display = 'none';
+      nameInputWrapper.style.display = 'none';
+    }
+
+    function gameOver(msg) {
+      gameActive = false;
+      messageEl.textContent = msg;
+      restartBtn.style.display = 'inline-block';
+      // اگر رکورد شکسته شد اجازه ثبت بده
+      if(score > highScore) {
+        highScore = score;
+        highscoreEl.textContent = `بالاترین رکورد: ${highScore}`;
+        nameInputWrapper.style.display = 'block';
+      }
+    }
+
+    function handleClick(e) {
+      if(!gameActive) return;
+      const cell = e.target;
+      if(!cell.classList.contains('cell')) return;
+
+      const index
