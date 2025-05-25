@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>بازی خنثی کردن بمب با مدال</title>
+  <style>
+    body {
+      font-family: 'Vazirmatn', sans-serif;
+      background-color: #f4f4f4;
+      text-align: center;
+      padding: 40px;
+    }
+
+    h1 {
+      color: #3b5bdb;
+      margin-bottom: 10px;
+    }
+
+    #score, #highscore, #round, #timer, #medal {
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+      color: #2f2f2f;
+    }
+
+    #timer {
+      color: #e03131;
+      font-weight: bold;
+    }
+
+    #game {
+      display: grid;
+      grid-template-columns: repeat(5, 60px);
+      gap: 10px;
+      justify-content: center;
+      margin: 20px auto;
+    }
+
+    .cell {
+      width: 60px;
+      height: 60px;
+      background-color: #ffffff;
+      border: 2px solid #ccc;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1.5rem;
+      transition: 0.2s;
+      user-select: none;
+    }
+
+    .cell:hover {
+      background-color: #e0e7ff;
+    }
+
+    .cell.revealed {
+      cursor: default;
+      background-color: #f1f3f5;
+    }
+
+    .cell.bomb {
+      background-color: #ff6b6b;
+      color: white;
+    }
+
+    #message {
+      font-size: 1.2rem;
+      margin-top: 20px;
+      color: #222;
+      min-height: 28px;
+    }
+
+    button {
+      margin-top: 20px;
+      padding: 10px 25px;
+      font-size: 1rem;
+      border: none;
+      background-color: #3b5bdb;
+      color: white;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #4c6ef5;
+    }
+
+    #leaderboard {
+      margin-top: 40px;
+      text-align: right;
+      max-width: 400px;
+      margin-inline: auto;
+    }
+
+    #leaderboard h2 {
+      margin-bottom: 10px;
+      color: #3b5bdb;
+    }
+
+    #leaderboard ul {
+      list-style: none;
+      padding: 0;
+    }
+
+    #leaderboard li {
+      background: #fff;
+      padding: 8px;
+      margin-bottom: 5px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+    }
+
+    #nameInputWrapper {
+      margin-top: 20px;
+    }
+
+    input[type="text"] {
+      padding: 6px;
+      font-size: 1rem;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      width: 200px;
+    }
+  </style>
+</head>
+<body>
+  <h1>💣 بازی خنثی کردن بمب</h1>
+  <div id="score">امتیاز: 100</div>
+  <div id="highscore">بالاترین رکورد: 0</div>
+  <div id="round">راند: 1</div>
+  <div id="medal">🏅 مدال: هنوز چیزی نگرفتی</div>
+  <div id="timer">⏳ زمان: 10</div>
+  <div id="game"></div>
+  <div id="message">در حال آماده‌سازی بازی...</div>
+  <div id="nameInputWrapper" style="display:none;">
+    <input type="text" id="playerName" placeholder="نام خود را وارد کنید" />
+    <button onclick="saveHighScore()">ثبت رکورد</button>
+  </div>
+  <button onclick="resetGame()">شروع دوباره</button>
+  <div id="leaderboard">
+    <h2>🏆 رکوردهای جهانی</h2>
+    <ul id="leaderboardList"></ul>
+  </div>
+
+  <script>
+    const gridSize = 5;
+    const totalCells = gridSize * gridSize;
+    const initialDisplayTime = 2000;
+    const decreaseFactor = 0.9;
+    const roundTime = 10;
+
+    let bombIndices = [];
+    let gameOver = false;
+    let score = 100;
+    let round = 1;
+    let displayTime = initialDisplayTime;
+    let bombsToFind = 1;
+    let foundBombsCount = 0;
+    let isClickable = false;
+    let timer;
+    let timeLeft = roundTime;
+
+    const gameContainer = document.getElementById('game');
+    const message = document.getElementById('message');
+    const scoreDisplay = document.getElementById('score');
+    const highscoreDisplay = document.getElementById('highscore');
+    const roundDisplay = document.getElementById('round');
+    const timerDisplay = document.getElementById('timer');
+    const medalDisplay = document.getElementById('medal');
+    const nameInputWrapper = document.getElementById('nameInputWrapper');
+    const playerNameInput = document.getElementById('playerName');
+    const leaderboardList = document.getElementById('leaderboardList');
+
+    let highScore = localStorage.getItem('defuseBombHighScore');
+    if (!highScore) highScore = 0;
+    else highScore = parseInt(highScore);
+    highscoreDisplay.textContent = `بالاترین رکورد: ${highScore}`;
+
+    function updateScore() {
+      scoreDisplay.textContent = `امتیاز: ${score}`;
+      if (score > highScore) {
+        highScore = score;
+        highscoreDisplay.textContent = `بالاترین رکورد: ${highScore}`;
+        localStorage.setItem('defuseBombHighScore', highScore);
+      }
+    }
+
+    function updateRound() {
+      roundDisplay.textContent = `راند: ${round}`;
+      updateMedal();
+    }
+
+    function updateMedal() {
+      let medal = '⛔ هنوز چیزی نگرفتی';
+      if (round >= 1 && round <= 5) medal = '🥉 مدال برنزی';
+      else if (round >= 6 && round <= 10) medal = '🥈 مدال نقره‌ای';
+      else if (round >= 11 && round <= 15) medal = '🥇 مدال طلایی';
+      else if (round >= 16 && round <= 20) medal = '🪙 مدال کهربا';
+      else if (round >= 21) medal = '💎 مدال الماسی';
+      medalDisplay.textContent = `🏅 مدال: ${medal}`;
+    }
+
+    function getCurrentMedal() {
+      if (round >= 1 && round <= 5) return '🥉';
+      else if (round >= 6 && round <= 10) return '🥈';
+      else if (round >= 11 && round <= 15) return '🥇';
+      else if (round >= 16 && round <= 20) return '🪙';
+      else return '💎';
+    }
+
+    function updateTimerDisplay() {
+      timerDisplay.textContent = `⏳ زمان: ${timeLeft}`;
+    }
+
+    function startCountdown() {
+      timeLeft = roundTime;
+      updateTimerDisplay();
+      timer = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay();
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          if (!gameOver) {
+            gameOver = true;
+            message.textContent = "⏱️ وقت تموم شد! بازی باختی!";
+            showNameInput();
+            score = 0;
+            updateScore();
+            revealBombs();
+            isClickable = false;
+          }
+        }
+      }, 1000);
+    }
+
+    function generateBombs(numBombs) {
+      let bombs = new Set();
+      while (bombs.size < numBombs) {
+        bombs.add(Math.floor(Math.random() * totalCells));
+      }
+      return Array.from(bombs);
+    }
+
+    function createGrid() {
+      gameContainer.innerHTML = '';
+      message.textContent = 'لطفاً جای بمب‌ها را به خاطر بسپار...';
+      isClickable = false;
+      gameOver = false;
+      foundBombsCount = 0;
+      nameInputWrapper.style.display = 'none';
+
+      bombsToFind = 1 + Math.floor((round - 1) / 3);
+      bombIndices = generateBombs(bombsToFind);
+
+      for (let i = 0; i < totalCells; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell', 'revealed');
+        cell.dataset.index = i;
+        if (bombIndices.includes(i)) {
+          cell.textContent = '💣';
+        }
+        gameContainer.appendChild(cell);
+      }
+
+      setTimeout(() => {
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(cell => {
+          cell.textContent = '';
+          cell.classList.remove('revealed', 'bomb');
+          cell.addEventListener('click', handleClick);
+        });
+        isClickable = true;
+        message.textContent = 'بمب‌ها را خنثی کن!';
+        startCountdown();
+      }, displayTime);
+
+      updateScore();
+      updateRound();
+    }
+
+    function handleClick(e) {
+      if (!isClickable || gameOver) return;
+
+      const cell = e.target;
+      const index = parseInt(cell.dataset.index);
+      if (cell.classList.contains('revealed')) return;
+
+      cell.classList.add('revealed');
+
+      if (bombIndices.includes(index)) {
+        cell.classList.add('bomb');
+        cell.textContent = '🛡️';
+        foundBombsCount++;
+        if (foundBombsCount === bombsToFind) {
+          clearInterval(timer);
+          score *= 2;
+          updateScore();
+          message.textContent = '🎉 همه بمب‌ها رو خنثی کردی!';
+          gameOver = true;
+          setTimeout(() => nextRound(), 1500);
+        } else {
+          message.textContent = `✅ ${bombsToFind - foundBombsCount} بمب باقی مانده`;
+        }
+      } else {
+        cell.textContent = '❌';
+        score = 0;
+        clearInterval(timer);
+        updateScore();
+        message.textContent = '💥 اشتباه کردی! بازی تموم شد.';
+        revealBombs();
+        gameOver = true;
+        isClickable = false;
+        showNameInput();
+      }
+    }
+
+    function revealBombs() {
+      const cells = document.querySelectorAll('.cell');
+      cells.forEach((cell, i) => {
+        if (bombIndices.includes(i)) {
+          cell.textContent = '💣';
+          cell.classList.add('bomb', 'revealed');
+        }
+        cell.removeEventListener('click', handleClick);
+      });
+    }
+
+    function showNameInput() {
+      nameInputWrapper.style.display = 'block';
+    }
+
+    function saveHighScore() {
+      const name = playerNameInput.value.trim();
+      if (!name) return;
+
+      const entry = {
+        name,
+        score: highScore,
+        medal: getCurrentMedal()
+      };
+
+      const leaderboard = JSON.parse(localStorage.getItem('defuseBombLeaderboard')) || [];
+      leaderboard.push(entry);
+      leaderboard.sort((a, b) => b.score - a.score);
+      localStorage.setItem('defuseBombLeaderboard', JSON.stringify(leaderboard));
+      displayLeaderboard();
+      playerNameInput.value = '';
+      nameInputWrapper.style.display = 'none';
+    }
+
+    function displayLeaderboard() {
+      const leaderboard = JSON.parse(localStorage.getItem('defuseBombLeaderboard')) || [];
+      leaderboardList.innerHTML = '';
+      leaderboard.slice(0, 10).forEach((entry, i) => {
+        const li = document.createElement('li');
+        li.textContent = `${i + 1}. ${entry.name} - ${entry.score} ${entry.medal}`;
+        leaderboardList.appendChild(li);
+      });
+    }
+
+    function nextRound() {
+      round++;
+      displayTime *= decreaseFactor;
+      createGrid();
+    }
+
+    function resetGame() {
+      score = 100;
+      round = 1;
+      displayTime = initialDisplayTime;
+      clearInterval(timer);
+      updateScore();
+      updateRound();
+      createGrid();
+    }
+
+    displayLeaderboard();
+    createGrid();
+  </script>
+</body>
+</html>
