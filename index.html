@@ -120,6 +120,27 @@
     }
 
     loadLeaderboard();
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAn4p0hh38oNPJymxhjuOpx1glSt827Zu0",
+    authDomain: "bomb-game-project.firebaseapp.com",
+    projectId: "bomb-game-project",
+    storageBucket: "bomb-game-project.firebasestorage.app",
+    messagingSenderId: "578216855542",
+    appId: "1:578216855542:web:429ab7cc304f945a50a9d7",
+    measurementId: "G-S69L08DM1Y"
+  };
+
+  // Initialize Firebase
+  firebase.initializeApp(firebaseConfig);
+
+  // حالا می‌تونی از firestore استفاده کنی:
+  const db = firebase.firestore();
+</script>
+
   </script>
 
   <script src="logic.js"></script>
