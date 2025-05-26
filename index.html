@@ -118,7 +118,6 @@
     let timeLimit = 10;
     let timerInterval;
     let timerValue = timeLimit;
-    let gameStarted = false;
     let medals = ['🥉 برنزی', '🥈 نقره‌ای', '🥇 طلایی', '🔶 کهربا', '💎 الماس'];
 
     const gameBoard = document.getElementById("game");
@@ -129,7 +128,6 @@
     const medalEl = document.getElementById("medal");
     const timerEl = document.getElementById("timer");
     const nameInputWrapper = document.getElementById("nameInputWrapper");
-    const playerNameInput = document.getElementById("playerName");
 
     function createBoard() {
       gameBoard.innerHTML = "";
@@ -163,7 +161,7 @@
           cell.textContent = "";
         });
         startTimer();
-      }, timeLimit * 100);
+      }, timeLimit * 1000 * 0.6); // زمان نمایش بمب‌ها معادل 60٪ از زمان کل
     }
 
     function handleCellClick(cell) {
@@ -199,7 +197,7 @@
     }
 
     function startTimer() {
-      timerValue = 10;
+      timerValue = Math.floor(timeLimit);
       timerEl.textContent = `⏳ زمان: ${timerValue}`;
       clearInterval(timerInterval);
       timerInterval = setInterval(() => {
