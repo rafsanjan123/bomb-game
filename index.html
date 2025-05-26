@@ -131,6 +131,9 @@
     let timerValue = timeLimit;
     let medals = ['🥉 برنزی', '🥈 نقره‌ای', '🥇 طلایی', '🔶 کهربا', '💎 الماس'];
 
+    let bombCount = 0;
+    let bombsDefused = 0;
+
     const gameBoard = document.getElementById("game");
     const message = document.getElementById("message");
     const scoreEl = document.getElementById("score");
@@ -144,7 +147,8 @@
     function createBoard() {
       gameBoard.innerHTML = "";
       const cells = 25;
-      const bombCount = Math.floor(round / 3) + 1;
+      bombCount = Math.floor(round / 3) + 1;
+      bombsDefused = 0;
       const bombIndexes = new Set();
       while (bombIndexes.size < bombCount) {
         bombIndexes.add(Math.floor(Math.random() * cells));
@@ -187,12 +191,17 @@
       if (cell.dataset.bomb === "true") {
         cell.classList.add("bomb");
         cell.textContent = "💣";
+        bombsDefused++;
         score += round * 10;
-        round++;
-        timeLimit = Math.max(timeLimit * 0.9, 7);
         updateUI();
-        stopTimer();
-        createBoard();
+
+        if (bombsDefused === bombCount) {
+          round++;
+          timeLimit = Math.max(timeLimit * 0.9, 7);
+          stopTimer();
+          createBoard();
+          message.textContent = "🎉 تبریک! راند بعدی آماده است.";
+        }
       } else {
         score = 0;
         gameOver();
