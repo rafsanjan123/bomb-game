@@ -63,11 +63,6 @@
       color: white;
       animation: pulse 0.6s ease-in-out infinite;
     }
-    .cell.wrong {
-      background-color: #ff6b6b;
-      color: white;
-      font-weight: bold;
-    }
     @keyframes pulse {
       0%, 100% { transform: scale(1); opacity: 1; }
       50% { transform: scale(1.2); opacity: 0.6; }
@@ -146,14 +141,10 @@
     const nameInputWrapper = document.getElementById("nameInputWrapper");
     const bombHint = document.getElementById("bombHint");
 
-    let bombCount = 0;
-    let defusedBombs = 0;
-
     function createBoard() {
       gameBoard.innerHTML = "";
       const cells = 25;
-      bombCount = Math.floor(round / 3) + 1;
-      defusedBombs = 0;
+      const bombCount = Math.floor(round / 3) + 1;
       const bombIndexes = new Set();
       while (bombIndexes.size < bombCount) {
         bombIndexes.add(Math.floor(Math.random() * cells));
@@ -186,7 +177,7 @@
         });
         bombHint.textContent = "";
         startTimer();
-      }, 1000);  // زمان نمایش بمب‌ها: ۱ ثانیه
+      }, 1000);
     }
 
     function handleCellClick(cell) {
@@ -196,25 +187,14 @@
       if (cell.dataset.bomb === "true") {
         cell.classList.add("bomb");
         cell.textContent = "💣";
-        defusedBombs++;
-        score += 10 * round;
-        updateUI();
-
-        if (defusedBombs === bombCount) {
-          round++;
-          timeLimit *= 0.9;
-          stopTimer();
-          message.textContent = "🎉 تبریک! به راند بعدی رفتی";
-          setTimeout(() => {
-            message.textContent = "";
-            createBoard();
-          }, 1500);
-        }
-      } else {
-        cell.classList.add("wrong");
-        score = 0;
+        score += round * 10;
+        round++;
+        timeLimit = Math.max(timeLimit * 0.9, 7);
         updateUI();
         stopTimer();
+        createBoard();
+      } else {
+        score = 0;
         gameOver();
       }
     }
@@ -228,7 +208,7 @@
     }
 
     function getCurrentMedal() {
-      const index = Math.floor((round - 1) / 5);
+      const index = Math.floor(round / 5);
       return medals[index] || medals[medals.length - 1];
     }
 
@@ -243,7 +223,6 @@
           clearInterval(timerInterval);
           message.textContent = "⏰ زمان تمام شد!";
           score = 0;
-          updateUI();
           gameOver();
         }
       }, 1000);
@@ -254,8 +233,8 @@
     }
 
     function gameOver() {
-      message.textContent = "💥 باختی! لطفاً دوباره تلاش کن.";
-      nameInputWrapper.style.display = score > 0 ? "block" : "none";
+      message.textContent = "💥 باختی! لطفا اسمت رو وارد کن";
+      nameInputWrapper.style.display = 'block';
     }
 
     function resetGame() {
@@ -263,28 +242,11 @@
       round = 1;
       timeLimit = 10;
       updateUI();
-      message.textContent = "";
-      nameInputWrapper.style.display = "none";
+      nameInputWrapper.style.display = 'none';
+      message.textContent = "در حال آماده‌سازی بازی...";
       createBoard();
     }
 
-    function saveHighScore() {
-      const playerName = document.getElementById("playerName").value.trim();
-      if (!playerName) {
-        alert("لطفاً نام خود را وارد کنید.");
-        return;
-      }
-      alert(`رکورد شما با نام ${playerName} ثبت شد!`);
-      nameInputWrapper.style.display = "none";
-    }
-
-    function shareScore() {
-      const text = `امتیاز من در بازی خنثی کردن بمب: ${score} - راند: ${round}`;
-      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-      window.open(url, "_blank");
-    }
-
-    // شروع بازی اولیه
     resetGame();
   </script>
 </body>
