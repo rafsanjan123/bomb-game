@@ -7,26 +7,26 @@
   <style>
     body {
       font-family: 'Vazirmatn', sans-serif;
-      background-color: #f4f4f4;
+      background: linear-gradient(145deg, #f0f4ff, #dbe4ff);
       text-align: center;
       padding: 20px;
       margin: 0;
     }
     h1 {
-      color: #3b5bdb;
+      color: #364fc7;
       margin-bottom: 10px;
     }
     h2 {
-      color: #555;
+      color: #495057;
       margin-bottom: 20px;
     }
     #score, #highscore, #round, #timer, #medal {
       font-size: 1.1rem;
       margin-bottom: 8px;
-      color: #2f2f2f;
+      color: #212529;
     }
     #timer {
-      color: #e03131;
+      color: #c92a2a;
       font-weight: bold;
     }
     #game {
@@ -41,7 +41,7 @@
       width: 100%;
       aspect-ratio: 1 / 1;
       background-color: #ffffff;
-      border: 2px solid #ccc;
+      border: 2px solid #adb5bd;
       border-radius: 8px;
       cursor: pointer;
       font-size: 1.5rem;
@@ -52,34 +52,44 @@
       justify-content: center;
     }
     .cell:hover {
-      background-color: #e0e7ff;
+      background-color: #e9ecef;
     }
     .cell.revealed {
       cursor: default;
-      background-color: #f1f3f5;
+      background-color: #dee2e6;
     }
     .cell.bomb {
-      background-color: #ff6b6b;
+      background-color: #fa5252;
       color: white;
+      animation: pulse 0.6s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.2); opacity: 0.6; }
     }
     #message {
       font-size: 1.1rem;
       margin-top: 16px;
-      color: #222;
+      color: #343a40;
       min-height: 28px;
+    }
+    #bombHint {
+      font-size: 1rem;
+      color: #2f9e44;
+      margin-top: 6px;
     }
     button {
       margin-top: 20px;
       padding: 10px 25px;
       font-size: 1rem;
       border: none;
-      background-color: #3b5bdb;
+      background-color: #4263eb;
       color: white;
       border-radius: 8px;
       cursor: pointer;
     }
     button:hover {
-      background-color: #4c6ef5;
+      background-color: #5c7cfa;
     }
     #nameInputWrapper {
       margin-top: 20px;
@@ -103,6 +113,7 @@
   <div id="medal">🏅 مدال: هنوز چیزی نگرفتی</div>
   <div id="timer">⏳ زمان: 10</div>
   <div id="game"></div>
+  <div id="bombHint"></div>
   <div id="message">در حال آماده‌سازی بازی...</div>
   <div id="nameInputWrapper" style="display:none;">
     <input type="text" id="playerName" placeholder="نام خود را وارد کنید" />
@@ -128,6 +139,7 @@
     const medalEl = document.getElementById("medal");
     const timerEl = document.getElementById("timer");
     const nameInputWrapper = document.getElementById("nameInputWrapper");
+    const bombHint = document.getElementById("bombHint");
 
     function createBoard() {
       gameBoard.innerHTML = "";
@@ -154,14 +166,18 @@
       document.querySelectorAll(".cell").forEach(cell => {
         if (cell.dataset.bomb === "true") {
           cell.textContent = "💣";
+          cell.classList.add("bomb");
         }
       });
+      bombHint.textContent = "👀 الان جای بمب‌ها رو به خاطر بسپار!";
       setTimeout(() => {
         document.querySelectorAll(".cell").forEach(cell => {
           cell.textContent = "";
+          cell.classList.remove("bomb");
         });
+        bombHint.textContent = "";
         startTimer();
-      }, timeLimit * 1000 * 0.6); // زمان نمایش بمب‌ها معادل 60٪ از زمان کل
+      }, 1000);
     }
 
     function handleCellClick(cell) {
