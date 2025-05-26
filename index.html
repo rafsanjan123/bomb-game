@@ -1,154 +1,274 @@
 <!DOCTYPE html>
 <html lang="fa" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>بازی پیدا کردن بمب</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>بازی خنثی کردن بمب با تایمر</title>
   <style>
     body {
-      font-family: sans-serif;
-      background: #f0f0f0;
+      font-family: 'Vazirmatn', sans-serif;
+      background-color: #f4f4f4;
       text-align: center;
-      margin: 0;
-      padding: 20px;
+      padding: 40px;
     }
+
     h1 {
-      color: #2c3e50;
-    }
-    #info {
+      color: #3b5bdb;
       margin-bottom: 10px;
     }
+
+    #score, #highscore, #round, #timer {
+      font-size: 1.2rem;
+      margin-bottom: 10px;
+      color: #2f2f2f;
+    }
+
+    #timer {
+      color: #e03131;
+      font-weight: bold;
+    }
+
     #game {
       display: grid;
       grid-template-columns: repeat(5, 60px);
-      gap: 8px;
+      gap: 10px;
       justify-content: center;
       margin: 20px auto;
     }
+
     .cell {
       width: 60px;
       height: 60px;
-      background: #fff;
+      background-color: #ffffff;
       border: 2px solid #ccc;
-      border-radius: 10px;
-      font-size: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      border-radius: 8px;
       cursor: pointer;
+      font-size: 1.5rem;
+      transition: 0.2s;
       user-select: none;
     }
-    .cell.revealed {
-      background: #eee;
-      cursor: default;
+
+    .cell:hover {
+      background-color: #e0e7ff;
     }
+
+    .cell.revealed {
+      cursor: default;
+      background-color: #f1f3f5;
+    }
+
     .cell.bomb {
-      background: #e74c3c;
+      background-color: #ff6b6b;
       color: white;
     }
+
     #message {
-      margin-top: 15px;
-      font-weight: bold;
-      min-height: 24px;
+      font-size: 1.2rem;
+      margin-top: 20px;
+      color: #222;
+      min-height: 28px;
     }
+
     button {
-      margin-top: 15px;
-      padding: 10px 20px;
-      font-size: 16px;
-      background: #3498db;
+      margin-top: 20px;
+      padding: 10px 25px;
+      font-size: 1rem;
       border: none;
+      background-color: #3b5bdb;
       color: white;
       border-radius: 8px;
       cursor: pointer;
     }
-    @media (max-width: 500px) {
-      #game {
-        grid-template-columns: repeat(5, 50px);
-        gap: 6px;
-      }
-      .cell {
-        width: 50px;
-        height: 50px;
-        font-size: 20px;
-      }
+
+    button:hover {
+      background-color: #4c6ef5;
     }
   </style>
 </head>
 <body>
-
-  <h1>🎮 بازی بمب</h1>
-  <div id="info">
-    <div>امتیاز: <span id="score">0</span></div>
-    <div>راند: <span id="round">1</span></div>
-  </div>
+  <h1>💣 بازی خنثی کردن بمب - با تایمر</h1>
+  <div id="score">امتیاز: 100</div>
+  <div id="highscore">بالاترین رکورد: 0</div>
+  <div id="round">راند: 1</div>
+  <div id="timer">⏳ زمان: 10</div>
   <div id="game"></div>
-  <div id="message"></div>
-  <button onclick="startGame()">شروع دوباره</button>
+  <div id="message">در حال آماده‌سازی بازی...</div>
+  <button onclick="resetGame()">شروع دوباره</button>
 
   <script>
-    const gameEl = document.getElementById("game");
-    const messageEl = document.getElementById("message");
-    const scoreEl = document.getElementById("score");
-    const roundEl = document.getElementById("round");
+    const gridSize = 5;
+    const totalCells = gridSize * gridSize;
+    const initialDisplayTime = 2000;
+    const decreaseFactor = 0.8;
+    const roundTime = 10; // ثانیه برای هر راند
 
-    let score = 0;
-    let round = 1;
-    let bombIndex = 0;
+    let bombIndices = [];
     let gameOver = false;
+    let score = 100;
+    let round = 1;
+    let displayTime = initialDisplayTime;
+    let bombsToFind = 1;
+    let foundBombsCount = 0;
+    let isClickable = false;
+    let timer;
+    let timeLeft = roundTime;
 
-    function startGame() {
-      score = 0;
-      round = 1;
-      gameOver = false;
-      scoreEl.textContent = score;
-      roundEl.textContent = round;
-      messageEl.textContent = '';
-      startRound();
+    const gameContainer = document.getElementById('game');
+    const message = document.getElementById('message');
+    const scoreDisplay = document.getElementById('score');
+    const highscoreDisplay = document.getElementById('highscore');
+    const roundDisplay = document.getElementById('round');
+    const timerDisplay = document.getElementById('timer');
+
+    let highScore = localStorage.getItem('defuseBombHighScore');
+    if (!highScore) highScore = 0;
+    else highScore = parseInt(highScore);
+    highscoreDisplay.textContent = `بالاترین رکورد: ${highScore}`;
+
+    function updateScore() {
+      scoreDisplay.textContent = `امتیاز: ${score}`;
+      if (score > highScore) {
+        highScore = score;
+        highscoreDisplay.textContent = `بالاترین رکورد: ${highScore}`;
+        localStorage.setItem('defuseBombHighScore', highScore);
+      }
     }
 
-    function startRound() {
+    function updateRound() {
+      roundDisplay.textContent = `راند: ${round}`;
+    }
+
+    function updateTimerDisplay() {
+      timerDisplay.textContent = `⏳ زمان: ${timeLeft}`;
+    }
+
+    function startCountdown() {
+      timeLeft = roundTime;
+      updateTimerDisplay();
+      timer = setInterval(() => {
+        timeLeft--;
+        updateTimerDisplay();
+        if (timeLeft <= 0) {
+          clearInterval(timer);
+          if (!gameOver) {
+            gameOver = true;
+            message.textContent = "⏱️ وقت تموم شد! بازی باختی!";
+            score = 0;
+            updateScore();
+            revealBombs();
+            isClickable = false;
+          }
+        }
+      }, 1000);
+    }
+
+    function generateBombs(numBombs) {
+      let bombs = new Set();
+      while (bombs.size < numBombs) {
+        bombs.add(Math.floor(Math.random() * totalCells));
+      }
+      return Array.from(bombs);
+    }
+
+    function createGrid() {
+      gameContainer.innerHTML = '';
+      message.textContent = 'لطفاً جای بمب‌ها را به خاطر بسپار...';
+      isClickable = false;
       gameOver = false;
-      gameEl.innerHTML = "";
-      const cells = [];
-      for (let i = 0; i < 25; i++) {
-        const cell = document.createElement("div");
-        cell.className = "cell";
+      foundBombsCount = 0;
+
+      bombsToFind = 1 + Math.floor((round - 1) / 3);
+      bombIndices = generateBombs(bombsToFind);
+
+      for (let i = 0; i < totalCells; i++) {
+        const cell = document.createElement('div');
+        cell.classList.add('cell', 'revealed');
         cell.dataset.index = i;
-        cell.addEventListener("click", handleClick);
-        cells.push(cell);
-        gameEl.appendChild(cell);
+        if (bombIndices.includes(i)) {
+          cell.textContent = '💣';
+        }
+        gameContainer.appendChild(cell);
       }
 
-      bombIndex = Math.floor(Math.random() * 25);
-      cells[bombIndex].textContent = "💣";
-      
       setTimeout(() => {
-        cells[bombIndex].textContent = "";
-      }, 1000 - (round - 1) * 100); // کمتر شدن زمان نمایش
+        const cells = document.querySelectorAll('.cell');
+        cells.forEach(cell => {
+          cell.textContent = '';
+          cell.classList.remove('revealed', 'bomb');
+          cell.addEventListener('click', handleClick);
+        });
+        isClickable = true;
+        message.textContent = 'بمب‌ها را خنثی کن!';
+        startCountdown(); // شروع تایمر
+      }, displayTime);
+
+      updateScore();
+      updateRound();
     }
 
     function handleClick(e) {
-      if (gameOver) return;
-      const index = parseInt(e.target.dataset.index);
-      if (index === bombIndex) {
-        e.target.textContent = "💣";
-        e.target.classList.add("bomb");
-        messageEl.textContent = "✅ بمب رو پیدا کردی! رفتیم مرحله بعد!";
-        score += 10;
-        round++;
-        scoreEl.textContent = score;
-        roundEl.textContent = round;
-        setTimeout(startRound, 1000);
+      if (!isClickable || gameOver) return;
+
+      const cell = e.target;
+      const index = parseInt(cell.dataset.index);
+      if (cell.classList.contains('revealed')) return;
+
+      cell.classList.add('revealed');
+
+      if (bombIndices.includes(index)) {
+        cell.classList.add('bomb');
+        cell.textContent = '🛡️';
+        foundBombsCount++;
+        if (foundBombsCount === bombsToFind) {
+          clearInterval(timer);
+          score *= 2;
+          updateScore();
+          message.textContent = '🎉 همه بمب‌ها رو خنثی کردی!';
+          gameOver = true;
+          setTimeout(() => nextRound(), 1500);
+        } else {
+          message.textContent = `✅ ${bombsToFind - foundBombsCount} بمب باقی مانده`;
+        }
       } else {
-        e.target.textContent = "❌";
-        e.target.classList.add("revealed");
-        messageEl.textContent = "💥 باختی! بازی تموم شد.";
+        cell.textContent = '❌';
+        score = 0;
+        clearInterval(timer);
+        updateScore();
+        message.textContent = '💥 اشتباه کردی! بازی تموم شد.';
+        revealBombs();
         gameOver = true;
+        isClickable = false;
       }
     }
 
-    startGame();
-  </script>
+    function revealBombs() {
+      const cells = document.querySelectorAll('.cell');
+      cells.forEach((cell, i) => {
+        if (bombIndices.includes(i)) {
+          cell.textContent = '💣';
+          cell.classList.add('bomb', 'revealed');
+        }
+        cell.removeEventListener('click', handleClick);
+      });
+    }
 
+    function nextRound() {
+      round++;
+      displayTime *= decreaseFactor;
+      createGrid();
+    }
+
+    function resetGame() {
+      score = 100;
+      round = 1;
+      displayTime = initialDisplayTime;
+      clearInterval(timer);
+      updateScore();
+      updateRound();
+      createGrid();
+    }
+
+    createGrid();
+  </script>
 </body>
 </html>
